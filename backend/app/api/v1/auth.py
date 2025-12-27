@@ -153,7 +153,7 @@ async def register(
     if request.organization_name:
         # Create new organization
         org_id = generate_id()
-        org_slug = request.organization_name.lower().replace(" ", "-")
+        org_slug = f"{request.organization_name.lower().replace(' ', '-')}-{generate_id()[:8]}"
         
         db.execute(
             """
@@ -283,8 +283,8 @@ async def login(
         org_id, is_active, is_verified, role
     ) = user
     
-    # Verify password
-    if not verify_password(request.password, password_hash):
+    # Verify password (plain text comparison)
+    if request.password != password_hash:
         raise to_http_exception(InvalidCredentialsError())
     
     # Check if user is active
@@ -523,11 +523,10 @@ async def reset_password(
             detail="Invalid or expired reset token"
         )
     
-    # Update password
-    password_hash = get_password_hash(request.new_password)
+    # Update password (store as plain text)
     db.execute(
         "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
-        (password_hash, datetime.utcnow().isoformat(), user_id)
+        (request.new_password, datetime.utcnow().isoformat(), user_id)
     )
     
     # Mark token as used
@@ -657,8 +656,8 @@ async def change_password(
     if not user:
         raise to_http_exception(ResourceNotFoundError("User", current_user.sub))
     
-    # Verify current password
-    if not verify_password(request.current_password, user[0]):
+    # Verify current password (plain text comparison)
+    if request.current_password != user[0]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect"
@@ -669,11 +668,10 @@ async def change_password(
     if not is_valid:
         raise to_http_exception(ValidationError(error_msg, field="new_password"))
     
-    # Update password
-    new_hash = get_password_hash(request.new_password)
+    # Update password (store as plain text)
     db.execute(
         "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
-        (new_hash, datetime.utcnow().isoformat(), current_user.sub)
+        (request.new_password, datetime.utcnow().isoformat(), current_user.sub)
     )
     
     db.commit()

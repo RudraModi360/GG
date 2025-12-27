@@ -20,17 +20,38 @@ class Database:
     
     def __init__(self):
         self._connection: Optional[Any] = None
+        self._is_http_client = False
     
     def connect(self) -> Any:
         """
-        Establish database connection using embedded replica.
+        Establish database connection.
+        Uses HTTP client for serverless, embedded replica for local dev.
         Returns the connection object.
         """
         if self._connection is None:
+            # Try HTTP client first (works in serverless environments)
+            try:
+                import libsql_client
+                import os
+                
+                # Check if we have Turso URL (indicates remote database)
+                if settings.TURSO_DATABASE_URL and settings.TURSO_AUTH_TOKEN:
+                    self._connection = libsql_client.create_client_sync(
+                        url=settings.TURSO_DATABASE_URL,
+                        auth_token=settings.TURSO_AUTH_TOKEN
+                    )
+                    self._is_http_client = True
+                    logger.info("Connected to Turso database via HTTP client")
+                    return self._connection
+            except ImportError:
+                logger.debug("libsql_client not available, trying embedded replica")
+            except Exception as e:
+                logger.warning(f"HTTP client connection failed: {e}")
+            
+            # Try embedded replica (for local development)
             try:
                 import libsql
                 
-                # Connect using embedded replica pattern
                 self._connection = libsql.connect(
                     settings.LOCAL_DB_PATH,
                     sync_url=settings.TURSO_DATABASE_URL,
@@ -50,15 +71,38 @@ class Database:
         
         return self._connection
     
-    def execute(self, query: str, params: Tuple = ()) -> Any:
-        """Execute a single query."""
-        conn = self.connect()
-        try:
-            result = conn.execute(query, params)
-            return result
-        except Exception as e:
-            logger.error(f"Query execution failed: {e}\nQuery: {query}")
-            raise
+    def _reconnect(self) -> Any:
+        """Force reconnection to the database."""
+        self._connection = None
+        return self.connect()
+    
+    def execute(self, query: str, params: Tuple = (), retries: int = 3) -> Any:
+        """Execute a single query with retry logic for connection drops."""
+        import time
+        
+        last_error = None
+        for attempt in range(retries):
+            conn = self.connect()
+            try:
+                result = conn.execute(query, params)
+                return result
+            except Exception as e:
+                error_str = str(e).lower()
+                # Check if it's a connection error that should trigger retry
+                if any(err in error_str for err in ['connection', 'forcibly closed', 'os error 10054', 'hrana']):
+                    logger.warning(f"Connection error on attempt {attempt + 1}/{retries}: {e}")
+                    last_error = e
+                    # Force reconnection on next attempt
+                    self._connection = None
+                    if attempt < retries - 1:
+                        time.sleep(0.5 * (attempt + 1))  # Exponential backoff
+                    continue
+                else:
+                    logger.error(f"Query execution failed: {e}\nQuery: {query}")
+                    raise
+        
+        logger.error(f"All {retries} retry attempts failed for query: {query}")
+        raise last_error or Exception("Database connection failed after retries")
     
     def fetch_one(self, query: str, params: Tuple = ()) -> Optional[Tuple]:
         """Execute query and fetch one result."""

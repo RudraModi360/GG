@@ -238,3 +238,15 @@ async def readiness_check():
     Readiness check for Kubernetes/container orchestration.
     """
     return {"status": "ready"}
+
+
+# ===========================================
+# Serverless Handler (Vercel/AWS Lambda)
+# ===========================================
+
+try:
+    from mangum import Mangum
+    handler = Mangum(app, lifespan="off")
+except ImportError:
+    # Mangum not available, running locally
+    handler = None
