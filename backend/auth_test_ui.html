@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GearGuard Auth API Tester</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f0f14;
+            --bg-secondary: #1a1a24;
+            --bg-tertiary: #252532;
+            --bg-card: rgba(30, 30, 42, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #6b6b7a;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-error: #ef4444;
+            --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-error: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Background decoration */
+        .bg-decoration {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-decoration::before {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+            top: -200px;
+            right: -100px;
+            animation: float 15s ease-in-out infinite;
+        }
+
+        .bg-decoration::after {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+            bottom: -150px;
+            left: -100px;
+            animation: float 18s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, 30px) scale(1.1); }
+        }
+
+        /* Header */
+        .header {
+            padding: 24px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 15, 20, 0.9);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .api-url-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .api-url-input {
+            width: 300px;
+            padding: 10px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'Fira Code', monospace;
+            transition: all 0.3s ease;
+        }
+
+        .api-url-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Main Container */
+        .container {
+            display: grid;
+            grid-template-columns: 280px 1fr 400px;
+            min-height: calc(100vh - 89px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            padding: 24px 16px;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            padding: 0 12px;
+            margin-bottom: 12px;
+        }
+
+        .endpoint-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .endpoint-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .endpoint-item:hover {
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .endpoint-item.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .method-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .method-badge.post { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .method-badge.get { background: rgba(99, 102, 241, 0.2); color: #6366f1; }
+        .method-badge.put { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .method-badge.delete { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+        .endpoint-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .endpoint-item.active .endpoint-name {
+            color: var(--text-primary);
+        }
+
+        /* Main Panel */
+        .main-panel {
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .panel-description {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            font-size: 14px;
+        }
+
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(20px);
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 3px;
+            height: 16px;
+            background: var(--gradient-primary);
+            border-radius: 2px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-label .required {
+            color: var(--accent-error);
+            margin-left: 2px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-loading {
+            position: relative;
+        }
+
+        .btn-loading::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Response Panel */
+        .response-panel {
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .response-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .response-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .status-badge.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .status-badge.pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .response-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .response-body {
+            flex: 1;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 12px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        .response-body .json-key {
+            color: #8b5cf6;
+        }
+
+        .response-body .json-string {
+            color: #10b981;
+        }
+
+        .response-body .json-number {
+            color: #f59e0b;
+        }
+
+        .response-body .json-boolean {
+            color: #6366f1;
+        }
+
+        .response-body .json-null {
+            color: #ef4444;
+        }
+
+        /* Token display */
+        .token-section {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .token-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent-success);
+            margin-bottom: 8px;
+        }
+
+        .token-value {
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .copy-btn {
+            margin-top: 8px;
+            padding: 6px 12px;
+            font-size: 11px;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-success);
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(16, 185, 129, 0.3);
+        }
+
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 240px 1fr 350px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar, .response-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-decoration"></div>
+    
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">🛡️</div>
+            <span class="logo-text">GearGuard Auth Tester</span>
+        </div>
+        <div class="api-url-container">
+            <input type="text" id="apiBaseUrl" class="api-url-input" value="http://localhost:8000" placeholder="API Base URL">
+        </div>
+    </header>
+
+    <div class="container">
+        <aside class="sidebar">
+            <div class="sidebar-title">Auth Endpoints</div>
+            <div class="endpoint-list" id="endpointList">
+                <!-- Endpoints will be populated by JS -->
+            </div>
+            
+            <div class="sidebar-title" style="margin-top: 32px;">Stored Tokens</div>
+            <div id="tokenStorage" style="padding: 0 12px;">
+                <p style="color: var(--text-muted); font-size: 12px;">No tokens stored yet</p>
+            </div>
+        </aside>
+
+        <main class="main-panel" id="mainPanel">
+            <!-- Form content will be populated by JS -->
+            <div class="empty-state">
+                <div class="empty-state-icon">🔐</div>
+                <p class="empty-state-text">Select an endpoint from the sidebar<br>to start testing</p>
+            </div>
+        </main>
+
+        <aside class="response-panel">
+            <div class="response-header">
+                <span class="response-title">Response</span>
+                <span class="status-badge pending" id="statusBadge">Ready</span>
+            </div>
+            <div class="response-time" id="responseTime">-</div>
+            <div id="tokenDisplay"></div>
+            <div class="response-body" id="responseBody">
+                <div class="empty-state" style="height: auto; padding: 40px 20px;">
+                    <div class="empty-state-icon">📋</div>
+                    <p class="empty-state-text">Response will appear here</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // Endpoint configurations
+        const endpoints = [
+            {
+                id: 'register',
+                name: 'Register',
+                method: 'POST',
+                path: '/api/v1/auth/register',
+                description: 'Register a new user. Creates organization if organization_name is provided.',
+                fields: [
+                    { name: 'email', label: 'Email', type: 'email', required: true, placeholder: 'user@example.com' },
+                    { name: 'password', label: 'Password', type: 'password', required: true, placeholder: 'Min 8 characters' },
+                    { name: 'first_name', label: 'First Name', type: 'text', required: true, placeholder: 'John' },
+                    { name: 'last_name', label: 'Last Name', type: 'text', required: true, placeholder: 'Doe' },
+                    { name: 'phone', label: 'Phone', type: 'text', required: false, placeholder: '+1234567890' },
+                    { name: 'organization_name', label: 'Organization Name', type: 'text', required: false, placeholder: 'My Company (creates new org)' },
+                    { name: 'organization_id', label: 'Organization ID', type: 'text', required: false, placeholder: 'Join existing org' }
+                ]
+            },
+            {
+                id: 'login',
+                name: 'Login',
+                method: 'POST',
+                path: '/api/v1/auth/login',
+                description: 'Authenticate user and receive JWT tokens.',
+                fields: [
+                    { name: 'email', label: 'Email', type: 'email', required: true, placeholder: 'user@example.com' },
+                    { name: 'password', label: 'Password', type: 'password', required: true, placeholder: 'Your password' }
+                ]
+            },
+            {
+                id: 'logout',
+                name: 'Logout',
+                method: 'POST',
+                path: '/api/v1/auth/logout',
+                description: 'Logout user and invalidate all sessions.',
+                fields: [],
+                requiresAuth: true
+            },
+            {
+                id: 'refresh',
+                name: 'Refresh Token',
+                method: 'POST',
+                path: '/api/v1/auth/refresh',
+                description: 'Get a new access token using refresh token.',
+                fields: [
+                    { name: 'refresh_token', label: 'Refresh Token', type: 'text', required: true, placeholder: 'Your refresh token' }
+                ]
+            },
+            {
+                id: 'forgot-password',
+                name: 'Forgot Password',
+                method: 'POST',
+                path: '/api/v1/auth/forgot-password',
+                description: 'Request a password reset email.',
+                fields: [
+                    { name: 'email', label: 'Email', type: 'email', required: true, placeholder: 'user@example.com' }
+                ]
+            },
+            {
+                id: 'reset-password',
+                name: 'Reset Password',
+                method: 'POST',
+                path: '/api/v1/auth/reset-password',
+                description: 'Reset password using the reset token from email.',
+                fields: [
+                    { name: 'token', label: 'Reset Token', type: 'text', required: true, placeholder: 'Token from email' },
+                    { name: 'new_password', label: 'New Password', type: 'password', required: true, placeholder: 'Min 8 characters' }
+                ]
+            },
+            {
+                id: 'profile',
+                name: 'Get Profile',
+                method: 'GET',
+                path: '/api/v1/auth/me',
+                description: 'Get the current user\'s profile.',
+                fields: [],
+                requiresAuth: true
+            },
+            {
+                id: 'update-profile',
+                name: 'Update Profile',
+                method: 'PUT',
+                path: '/api/v1/auth/me',
+                description: 'Update the current user\'s profile information.',
+                fields: [
+                    { name: 'first_name', label: 'First Name', type: 'text', required: false, placeholder: 'John' },
+                    { name: 'last_name', label: 'Last Name', type: 'text', required: false, placeholder: 'Doe' },
+                    { name: 'phone', label: 'Phone', type: 'text', required: false, placeholder: '+1234567890' },
+                    { name: 'profile_image_url', label: 'Profile Image URL', type: 'text', required: false, placeholder: 'https://...' }
+                ],
+                requiresAuth: true
+            },
+            {
+                id: 'change-password',
+                name: 'Change Password',
+                method: 'POST',
+                path: '/api/v1/auth/change-password',
+                description: 'Change the current user\'s password.',
+                fields: [
+                    { name: 'current_password', label: 'Current Password', type: 'password', required: true, placeholder: 'Your current password' },
+                    { name: 'new_password', label: 'New Password', type: 'password', required: true, placeholder: 'Min 8 characters' }
+                ],
+                requiresAuth: true
+            }
+        ];
+
+        let currentEndpoint = null;
+        let storedTokens = {
+            access_token: localStorage.getItem('access_token') || null,
+            refresh_token: localStorage.getItem('refresh_token') || null
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderEndpointList();
+            updateTokenDisplay();
+        });
+
+        function renderEndpointList() {
+            const list = document.getElementById('endpointList');
+            list.innerHTML = endpoints.map(ep => `
+                <div class="endpoint-item" data-id="${ep.id}" onclick="selectEndpoint('${ep.id}')">
+                    <span class="method-badge ${ep.method.toLowerCase()}">${ep.method}</span>
+                    <span class="endpoint-name">${ep.name}</span>
+                </div>
+            `).join('');
+        }
+
+        function selectEndpoint(id) {
+            currentEndpoint = endpoints.find(ep => ep.id === id);
+            
+            // Update active state
+            document.querySelectorAll('.endpoint-item').forEach(el => {
+                el.classList.toggle('active', el.dataset.id === id);
+            });
+
+            renderForm();
+        }
+
+        function renderForm() {
+            const panel = document.getElementById('mainPanel');
+            const ep = currentEndpoint;
+
+            let fieldsHtml = '';
+            if (ep.fields.length > 0) {
+                fieldsHtml = ep.fields.map(field => `
+                    <div class="form-group">
+                        <label class="form-label">
+                            ${field.label}
+                            ${field.required ? '<span class="required">*</span>' : ''}
+                        </label>
+                        <input 
+                            type="${field.type}" 
+                            class="form-input" 
+                            id="field_${field.name}"
+                            placeholder="${field.placeholder}"
+                            ${field.required ? 'required' : ''}
+                        >
+                    </div>
+                `).join('');
+            }
+
+            const authWarning = ep.requiresAuth && !storedTokens.access_token ? `
+                <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                    <span style="color: var(--accent-warning);">⚠️</span>
+                    <span style="color: var(--text-secondary); font-size: 13px;">This endpoint requires authentication. Please login first to get an access token.</span>
+                </div>
+            ` : '';
+
+            const tokenInfo = ep.requiresAuth && storedTokens.access_token ? `
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                    <span style="color: var(--accent-success);">✓</span>
+                    <span style="color: var(--text-secondary); font-size: 13px;">Using stored access token for authentication</span>
+                </div>
+            ` : '';
+
+            panel.innerHTML = `
+                <div class="panel-title">
+                    <span class="method-badge ${ep.method.toLowerCase()}" style="font-size: 12px;">${ep.method}</span>
+                    ${ep.name}
+                </div>
+                <p class="panel-description">${ep.description}</p>
+                
+                ${authWarning}
+                ${tokenInfo}
+                
+                <div class="section">
+                    <div class="section-title">Endpoint</div>
+                    <code style="color: var(--text-secondary); font-size: 13px;">${ep.path}</code>
+                </div>
+                
+                ${ep.fields.length > 0 ? `
+                    <div class="section">
+                        <div class="section-title">Request Body</div>
+                        <form id="requestForm" onsubmit="executeRequest(event)">
+                            ${fieldsHtml}
+                        </form>
+                    </div>
+                ` : ''}
+                
+                <button class="btn btn-primary" onclick="executeRequest()" id="sendBtn" ${ep.requiresAuth && !storedTokens.access_token ? 'disabled' : ''}>
+                    <span>🚀</span>
+                    Send Request
+                </button>
+            `;
+        }
+
+        async function executeRequest(event) {
+            if (event) event.preventDefault();
+            
+            const ep = currentEndpoint;
+            const baseUrl = document.getElementById('apiBaseUrl').value;
+            const url = baseUrl + ep.path;
+            
+            // Collect form data
+            const body = {};
+            ep.fields.forEach(field => {
+                const value = document.getElementById(`field_${field.name}`)?.value;
+                if (value) {
+                    body[field.name] = value;
+                }
+            });
+
+            // Setup headers
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            if (ep.requiresAuth && storedTokens.access_token) {
+                headers['Authorization'] = `Bearer ${storedTokens.access_token}`;
+            }
+
+            // Update UI to loading state
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-loading"></span> Sending...';
+            
+            const statusBadge = document.getElementById('statusBadge');
+            statusBadge.textContent = 'Loading...';
+            statusBadge.className = 'status-badge pending';
+
+            const startTime = performance.now();
+
+            try {
+                const options = {
+                    method: ep.method,
+                    headers
+                };
+
+                if (['POST', 'PUT', 'PATCH'].includes(ep.method) && Object.keys(body).length > 0) {
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(url, options);
+                const endTime = performance.now();
+                const duration = Math.round(endTime - startTime);
+
+                const data = await response.json();
+
+                // Update response display
+                document.getElementById('responseTime').textContent = `${duration}ms`;
+                
+                if (response.ok) {
+                    statusBadge.textContent = `${response.status} OK`;
+                    statusBadge.className = 'status-badge success';
+                    
+                    // Store tokens if present
+                    if (data.access_token) {
+                        storedTokens.access_token = data.access_token;
+                        localStorage.setItem('access_token', data.access_token);
+                    }
+                    if (data.refresh_token) {
+                        storedTokens.refresh_token = data.refresh_token;
+                        localStorage.setItem('refresh_token', data.refresh_token);
+                    }
+                    updateTokenDisplay();
+                    
+                    // Show token section if tokens received
+                    if (data.access_token || data.refresh_token) {
+                        document.getElementById('tokenDisplay').innerHTML = `
+                            ${data.access_token ? `
+                                <div class="token-section">
+                                    <div class="token-label">Access Token</div>
+                                    <div class="token-value">${data.access_token}</div>
+                                    <button class="copy-btn" onclick="copyToClipboard('${data.access_token}')">📋 Copy</button>
+                                </div>
+                            ` : ''}
+                            ${data.refresh_token ? `
+                                <div class="token-section">
+                                    <div class="token-label">Refresh Token</div>
+                                    <div class="token-value">${data.refresh_token}</div>
+                                    <button class="copy-btn" onclick="copyToClipboard('${data.refresh_token}')">📋 Copy</button>
+                                </div>
+                            ` : ''}
+                        `;
+                    } else {
+                        document.getElementById('tokenDisplay').innerHTML = '';
+                    }
+                } else {
+                    statusBadge.textContent = `${response.status} Error`;
+                    statusBadge.className = 'status-badge error';
+                    document.getElementById('tokenDisplay').innerHTML = '';
+                }
+
+                // Display formatted JSON
+                document.getElementById('responseBody').innerHTML = formatJson(data);
+
+            } catch (error) {
+                const endTime = performance.now();
+                const duration = Math.round(endTime - startTime);
+                
+                document.getElementById('responseTime').textContent = `${duration}ms`;
+                statusBadge.textContent = 'Error';
+                statusBadge.className = 'status-badge error';
+                document.getElementById('tokenDisplay').innerHTML = '';
+                document.getElementById('responseBody').innerHTML = `<span style="color: var(--accent-error);">Error: ${error.message}</span>`;
+            }
+
+            // Reset button
+            btn.disabled = false;
+            btn.innerHTML = '<span>🚀</span> Send Request';
+        }
+
+        function formatJson(obj) {
+            const json = JSON.stringify(obj, null, 2);
+            return json
+                .replace(/(".*?")\s*:/g, '<span class="json-key">$1</span>:')
+                .replace(/:\s*(".*?")/g, ': <span class="json-string">$1</span>')
+                .replace(/:\s*(\d+)/g, ': <span class="json-number">$1</span>')
+                .replace(/:\s*(true|false)/g, ': <span class="json-boolean">$1</span>')
+                .replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
+        }
+
+        function updateTokenDisplay() {
+            const container = document.getElementById('tokenStorage');
+            if (storedTokens.access_token) {
+                container.innerHTML = `
+                    <div style="background: rgba(16, 185, 129, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+                        <div style="font-size: 10px; color: var(--accent-success); font-weight: 600; margin-bottom: 4px;">ACCESS TOKEN</div>
+                        <div style="font-size: 10px; color: var(--text-muted); word-break: break-all;">${storedTokens.access_token.substring(0, 40)}...</div>
+                    </div>
+                    <button class="copy-btn" style="width: 100%; margin-bottom: 8px;" onclick="copyToClipboard('${storedTokens.access_token}')">📋 Copy Access Token</button>
+                    <button class="copy-btn" style="width: 100%; background: rgba(239, 68, 68, 0.2); color: var(--accent-error);" onclick="clearTokens()">🗑️ Clear Tokens</button>
+                `;
+            } else {
+                container.innerHTML = '<p style="color: var(--text-muted); font-size: 12px;">No tokens stored yet. Login to get tokens.</p>';
+            }
+
+            // Refresh form if needed
+            if (currentEndpoint) {
+                renderForm();
+            }
+        }
+
+        function clearTokens() {
+            storedTokens = { access_token: null, refresh_token: null };
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            updateTokenDisplay();
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Brief visual feedback could be added here
+                alert('Copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>

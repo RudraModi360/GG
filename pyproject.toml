@@ -1,0 +1,32 @@
+[project]
+name = "gg"
+version = "0.1.0"
+description = "GearGuard - The Ultimate Maintenance Tracker"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.109.0",
+    "uvicorn[standard]==0.27.0",
+    "libsql",
+    "python-jose[cryptography]==3.3.0",
+    "passlib[bcrypt]==1.7.4",
+    "python-multipart==0.0.6",
+    "pydantic-settings==2.1.0",
+    "python-dotenv==1.0.0",
+    "ulid-py==1.1.0",
+    "qrcode[pil]==7.4.2",
+    "pillow==10.2.0",
+    "python-dateutil==2.8.2",
+    "httpx==0.26.0",
+    "anyio>=4.0.0",
+    "pydantic[email]>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.4",
+    "pytest-asyncio==0.23.3",
+    "black==24.1.0",
+    "isort==5.13.2",
+    "flake8==7.0.0",
+]
